@@ -40,14 +40,29 @@ app.get("/movies/get/:id",async (req,res)=>{
         res.status(201).send(movie)
 })
 
-app.get("/movies/search/:key",async(req,res)=>{
-    const key = req.params.key;
-    let movie = await Movies.find({ title: new RegExp(key, "i") }).exec();
+app.get("/movies/search",async(req,res)=>{
+    const options = {
+        page: req.query.page || 1,
+        limit: 20,
+        sort: {popularity : -1},
+        collation: {
+            locale: 'en',
+        },
+    };
+    const key = req.query.key;
 
-    if(movie == null)
-        res.status(201).send({"success":false,"status_code":34,"status_message":"The resource you requested could not be found."})
-    else
-        res.status(201).send(movie)
+    Movies.paginate({ title: new RegExp(key, "i") }, options, function (err, result) {
+        let data = {
+            page : options.page,
+            results : result.docs,
+            total_pages : result.totalPages,
+            total_results : result.totalDocs
+        }
+        if(data.results.length < 1) res.send({"errors":[`page must be less than or equal to ${result.totalPages}`]})
+
+        else res.send(data)
+    })
+
 })
 
 app.get("/movies/popular",(req,res)=>{
@@ -67,7 +82,7 @@ app.get("/movies/popular",(req,res)=>{
             total_pages : result.totalPages,
             total_results : result.totalDocs
         }
-        if(data.results.length < 1) res.send({"errors":["page must be less than or equal to 500"]})
+        if(data.results.length < 1) res.send({"errors":[`page must be less than or equal to ${result.totalPages}`]})
 
         else res.send(data)
     })
